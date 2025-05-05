@@ -61,7 +61,7 @@ class User {
         return{...p, 
           quantity: this.cart.items.find(i => {     //this function does is to repopulate the product with the quantity that the user has in cart
             return i.productId.toString() === p._id.toString();     //for this it maps through it finds where product id match and return the product
-          }).quatity    //whereas this ensures that from the product in cart we onnly capture the quantity
+          }).quantity    //whereas this ensures that from the product in cart we onnly capture the quantity
               //In mongodb this is the only way through which we can manually put JOIN on the collection
         };
       })
@@ -80,6 +80,36 @@ class User {
         { _id: new ObjectId(this._id) },
         { $set: { cart: {items: updatedCartItems } } }
       );
+  }
+
+  addOrder() {
+    const db = getDb();
+    return this.getCart().then(products => {     //we use getCart a method defined above because it populates the basic cart with data that is useful, essentially we are reusing a method to do the job
+      const order = {
+        items: products,
+        user: {
+          _id: new ObjectId(this._id),
+          name: this.name
+        }
+      }
+      return db.collection('orders').insertOne(order)
+    })
+    .then(result => {       //essentially we chain the promise so that it does the 2nd half starting here if the above is successfull
+        this.cart = {items: []};      //used this to update the captured User
+      //Once done will also empty the actiual cart by updating it
+        return db
+          .collection('users')
+          .updateOne(
+            {_id: new ObjectId(this._id) },
+            { $set: { cart: { items: [] } } }
+          );
+        });
+  }
+
+  getOrders() {
+    const db = getDb();
+    return db.collection('orders').find({'user._id': new ObjectId(this._id)})   //in mongodb we can check the properties of nested object by defining the path to them using ''. Also this function will return a cursor so convert to array as shortcut
+    .toArray();
   }
 
   static findById(userId) {
