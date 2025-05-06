@@ -1,3 +1,8 @@
+//populate here used in getProducts method can be used to get all ref data from the reffered table we just have to select the path on which the ref is on and it will populate/get the data on its own
+//Example here we are getting product which has reference to who put it up in userId once we gave the path it got the whole user's object within the userId
+//refer line in getProducts. select and populate can work on the same function as well
+
+
 const Product = require('../models/product');
 
 exports.getAddProduct = (req, res, next) => {
@@ -13,16 +18,15 @@ exports.postAddProduct = (req, res, next) => {
   const imageUrl = req.body.imageUrl;
   const price = req.body.price;
   const description = req.body.description;
-  const product = new Product(
-    title,
-    price,
-    description,
-    imageUrl,
-    null,
-    req.user._id
-  );
+  const product = new Product({
+    title: title, 
+    price: price, 
+    description: description,
+    imageUrl: imageUrl,
+    userId: req.user._id
+  });
   product
-    .save()
+    .save()   //This save method comes from mongoose
     .then(result => {
       // console.log(result);
       console.log('Created Product');
@@ -62,15 +66,14 @@ exports.postEditProduct = (req, res, next) => {
   const updatedImageUrl = req.body.imageUrl;
   const updatedDesc = req.body.description;
 
-  const product = new Product(
-    updatedTitle,
-    updatedPrice,
-    updatedDesc,
-    updatedImageUrl,
-    prodId
-  );
-  product
-    .save()
+  Product.findById(prodId)
+    .then(product => {
+      product.title = updatedTitle;
+      product.price = updatedPrice;
+      product.description = updatedDesc;
+      product.imageUrl = updatedImageUrl;
+      return product.save()
+    })
     .then(result => {
       console.log('UPDATED PRODUCT!');
       res.redirect('/admin/products');
@@ -79,8 +82,11 @@ exports.postEditProduct = (req, res, next) => {
 };
 
 exports.getProducts = (req, res, next) => {
-  Product.fetchAll()
+  Product.find()
+    // .populate('userId' )//, 'name')    //The second argument works like the select, essentially it says that i want only relevant name data from the User ref
+  //.select('title price -_id').  //select is used to select which attribute from the table i want to fetch in this case i am getting title and price and excluding _id
     .then(products => {
+      console.log(products);  //used to see the product that is populated
       res.render('admin/products', {
         prods: products,
         pageTitle: 'Admin Products',
@@ -92,7 +98,7 @@ exports.getProducts = (req, res, next) => {
 
 exports.postDeleteProduct = (req, res, next) => {
   const prodId = req.body.productId;
-  Product.deleteById(prodId)
+  Product.findByIdAndDelete(prodId)
     .then(() => {
       console.log('DESTROYED PRODUCT');
       res.redirect('/admin/products');
